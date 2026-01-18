@@ -1,31 +1,30 @@
 import { useState } from "react";
 import Header from "@/components/Header";
-import PageGenerator from "@/components/PageGenerator";
+// Removed PageGenerator import
+import StructuredGeneratorForm from "@/components/generator/StructuredGeneratorForm";
 import ResultCard from "@/components/ResultCard";
 import LoadingState from "@/components/LoadingState";
 import { Sparkles, Zap, Globe, Shield } from "lucide-react";
 import { api, ApiRequestError } from "@/services/api";
 import { toast } from "sonner";
 import type { GeneratePageRequest } from "@/types/api";
+import type { StructuredFormData } from "@/types/generator";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
 
-  const handleGenerate = async (data: {
-    prompt: string;
-    email: string;
-    pageType: string;
-    theme: string;
-  }) => {
+  const handleGenerate = async (data: StructuredFormData) => {
     setIsLoading(true);
 
     try {
+      // Structured flow
       const requestData: GeneratePageRequest = {
-        prompt: data.prompt,
+        prompt: `Generate a ${data.occasion} page`, // Fallback/Placeholder prompt for now
         email: data.email,
-        page_type: data.pageType || undefined,
-        theme: data.theme || undefined,
+        page_type: data.occasion,
+        theme: data.theme,
+        user_data: data as unknown as Record<string, any>,
       };
 
       const response = await api.pages.generate(requestData);
@@ -80,7 +79,7 @@ const Index = () => {
           </div>
 
           {/* Main Card */}
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-3xl mx-auto">
             <div className="bg-card rounded-2xl shadow-xl border border-border p-6 md:p-8 animate-scale-in">
               {generatedUrl ? (
                 <div className="space-y-6">
@@ -95,7 +94,7 @@ const Index = () => {
               ) : isLoading ? (
                 <LoadingState />
               ) : (
-                <PageGenerator onGenerate={handleGenerate} isLoading={isLoading} />
+                <StructuredGeneratorForm onGenerate={handleGenerate} isLoading={isLoading} />
               )}
             </div>
           </div>

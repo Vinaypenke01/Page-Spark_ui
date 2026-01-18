@@ -22,6 +22,7 @@ export interface GeneratePageRequest {
     email: string;
     page_type?: string;
     theme?: string;
+    user_data?: Record<string, any>;
 }
 
 export interface GeneratePageResponse {
