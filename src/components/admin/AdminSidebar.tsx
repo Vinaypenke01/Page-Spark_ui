@@ -59,8 +59,8 @@ const AdminSidebar = () => {
             key={item.path}
             to={item.path}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${isActive(item.path)
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
           >
             <item.icon className="h-5 w-5" />
@@ -80,7 +80,9 @@ const AdminSidebar = () => {
             <p className="text-xs text-muted-foreground truncate">admin@pagegen.app</p>
           </div>
         </div>
-        <button className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mt-2">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mt-2">
           <LogOut className="h-5 w-5" />
           Logout
         </button>
