@@ -23,4 +23,8 @@ export interface StructuredFormData {
     // Step 3: Dynamic
     // We use a flexible record here since keys vary by occasion
     specific_fields: Record<string, any>;
+
+    // Step 4: Prompt Preview
+    generatedPrompt?: string;
+    prompt?: string; // Final prompt to send to API (either generatedPrompt or custom)
 }

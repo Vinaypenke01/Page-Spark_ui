@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Sparkles, ArrowRight, ArrowLeft, Check, Calendar, MapPin, Clock } from "lucide-react";
+import { Sparkles, ArrowRight, ArrowLeft, Check, Calendar, MapPin, Clock, Edit, Eye } from "lucide-react";
 import {
     OCCASIONS,
     COMMON_FIELDS,
@@ -27,6 +27,7 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
         specific_fields: {},
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [isPromptEditable, setIsPromptEditable] = useState(false);
 
     const updateField = (field: keyof StructuredFormData, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -44,6 +45,76 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
             ...prev,
             specific_fields: { ...prev.specific_fields, [field]: value },
         }));
+    };
+
+    const generatePromptPreview = () => {
+        const occasion = formData.occasion?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Generic';
+        const title = formData.title || '';
+        const theme = formData.theme?.replace(/\b\w/g, l => l.toUpperCase()) || 'Modern';
+        const font = formData.font || 'sans';
+        const language = formData.language || 'english';
+
+        const promptParts = [
+            `You are a professional web designer and frontend developer.`,
+            `Create a visually attractive, single-page ${occasion} website.`,
+            ``,
+            `Page Title: ${title}`,
+            `Design Theme: ${theme}`,
+            `Font Style: ${font === 'handwritten' ? 'Handwritten/Playful' : font === 'serif' ? 'Serif (Classic)' : 'Sans-serif (Clean)'}`,
+            `Language: ${language.charAt(0).toUpperCase() + language.slice(1)}`,
+            ``,
+            `### Content Details`
+        ];
+
+        // Add common fields
+        const excludeKeys = ['occasion', 'email', 'theme', 'title', 'specific_fields', 'font', 'language', 'color', 'generatedPrompt'];
+        for (const [key, value] of Object.entries(formData)) {
+            if (!excludeKeys.includes(key) && value) {
+                const readableKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                promptParts.push(`- ${readableKey}: ${value}`);
+            }
+        }
+
+        // Add occasion-specific fields
+        const specificFields = formData.specific_fields || {};
+        if (Object.keys(specificFields).length > 0) {
+            promptParts.push('');
+            promptParts.push('### Occasion-Specific Details');
+            for (const [key, value] of Object.entries(specificFields)) {
+                if (value && value !== 'undefined') {
+                    const readableKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    promptParts.push(`- ${readableKey}: ${value}`);
+                }
+            }
+        }
+
+        // Add design and technical requirements
+        promptParts.push(
+            '',
+            '### Design & Layout Instructions',
+            `- Use a ${theme.toLowerCase()} visual style suitable for a ${occasion}.`,
+            '- Follow this section order:',
+            '  1. Hero section (title, short message)',
+            '  2. Event details (date, time, venue)',
+            '  3. Additional information / special message',
+            '  4. Contact or RSVP section',
+            '- Use clean spacing, clear typography, and balanced layout.',
+            '- Add subtle decorative elements relevant to the occasion.',
+            '',
+            '### Technical Requirements',
+            '- Output ONLY valid HTML with Tailwind CSS utility classes.',
+            '- Use semantic HTML5 elements.',
+            '- Include Tailwind CSS CDN in the <head> section: <script src="https://cdn.tailwindcss.com"></script>',
+            '- Use ONLY Tailwind CSS utility classes for styling - NO custom CSS or <style> tags.',
+            '- Do NOT include explanations, markdown, or comments.',
+            '- Do NOT include external libraries or images (except Tailwind CDN).',
+            '- Do NOT include any JavaScript code.',
+            '- The page must be fully responsive using Tailwind\'s responsive classes.',
+            '- Use Tailwind\'s color palette and spacing system.',
+            '- Example: Use classes like \'bg-blue-500\', \'text-white\', \'p-4\', \'rounded-lg\', etc.'
+        );
+
+        return promptParts.join('\n');
     };
 
     const validateStep = (currentStep: number): boolean => {
@@ -86,10 +157,34 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
         return isValid;
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (validateStep(step)) {
-            setStep((prev) => prev + 1);
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            // Generate AI prompt when moving from step 3 to step 4
+            if (step === 3) {
+                setIsPromptEditable(false); // Reset to readonly mode
+                setStep((prev) => prev + 1); // Move to step 4 first
+                window.scrollTo({ top: 0, behavior: "smooth" });
+
+                // Show loading state while generating prompt
+                setFormData((prev) => ({ ...prev, generatedPrompt: 'Generating AI-optimized prompt...' }));
+
+                try {
+                    // Call backend to generate AI prompt
+                    const { api } = await import('@/services/api');
+                    const response = await api.pages.generatePrompt(formData);
+
+                    // Set the AI-generated prompt
+                    setFormData((prev) => ({ ...prev, generatedPrompt: response.generated_prompt }));
+                } catch (error) {
+                    console.error('Failed to generate AI prompt:', error);
+                    // Fallback to frontend generation if backend fails
+                    const fallbackPrompt = generatePromptPreview();
+                    setFormData((prev) => ({ ...prev, generatedPrompt: fallbackPrompt }));
+                }
+            } else {
+                setStep((prev) => prev + 1);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            }
         }
     };
 
@@ -98,8 +193,13 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
     };
 
     const handleSubmit = () => {
-        if (validateStep(3)) {
-            onGenerate(formData as StructuredFormData);
+        if (validateStep(4)) {
+            // Use the generated or edited prompt
+            const finalData = {
+                ...formData,
+                prompt: formData.generatedPrompt || generatePromptPreview()
+            } as StructuredFormData;
+            onGenerate(finalData);
         }
     };
 
@@ -153,7 +253,7 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
         <div className="space-y-8">
             {/* Progress Indicator */}
             <div className="flex items-center justify-between px-2 mb-8">
-                {[1, 2, 3].map((s) => (
+                {[1, 2, 3, 4].map((s) => (
                     <div key={s} className="flex flex-col items-center relative z-10">
                         <div
                             className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${step >= s
@@ -164,7 +264,7 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
                             {step > s ? <Check className="h-6 w-6" /> : s}
                         </div>
                         <span className="text-xs mt-2 font-medium text-muted-foreground hidden sm:block">
-                            {s === 1 ? "Occasion" : s === 2 ? "Details" : "Specifics"}
+                            {s === 1 ? "Occasion" : s === 2 ? "Details" : s === 3 ? "Specifics" : "Preview"}
                         </span>
                     </div>
                 ))}
@@ -172,7 +272,7 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
                 <div className="absolute left-0 right-0 top-5 h-[2px] bg-muted -z-0 mx-8 md:mx-16" />
                 <div
                     className="absolute left-0 top-5 h-[2px] bg-primary transition-all duration-500 mx-8 md:mx-16 -z-0"
-                    style={{ width: `${((step - 1) / 2) * 100}%` }}
+                    style={{ width: `${((step - 1) / 3) * 100}%` }}
                 />
             </div>
 
@@ -318,6 +418,64 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
                 </div>
             )}
 
+            {step === 4 && (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="text-center mb-6">
+                        <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+                            <Eye className="h-6 w-6 text-primary" />
+                            Review Your Prompt
+                        </h2>
+                        <p className="text-muted-foreground mt-2">
+                            This is the AI-optimized prompt that will generate your page. You can edit it if needed.
+                        </p>
+                    </div>
+
+                    <Card className="p-6 bg-muted/30 border-2 border-primary/20">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-base font-semibold">Generated Prompt</Label>
+                                <Button
+                                    variant={isPromptEditable ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setIsPromptEditable(!isPromptEditable)}
+                                    className="gap-2"
+                                >
+                                    {isPromptEditable ? (
+                                        <>
+                                            <Eye className="h-4 w-4" /> View Mode
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Edit className="h-4 w-4" /> Edit Prompt
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+
+                            <Textarea
+                                value={formData.generatedPrompt || ''}
+                                onChange={(e) => updateField('generatedPrompt', e.target.value)}
+                                readOnly={!isPromptEditable}
+                                className={`min-h-[400px] font-mono text-sm ${isPromptEditable
+                                    ? 'bg-background border-primary'
+                                    : 'bg-muted/50 cursor-default'
+                                    }`}
+                                placeholder="Generating prompt..."
+                            />
+
+                            {isPromptEditable && (
+                                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-md">
+                                    <div className="text-amber-600 dark:text-amber-500 mt-0.5">⚠️</div>
+                                    <p className="text-sm text-amber-800 dark:text-amber-300">
+                                        <strong>Tip:</strong> Be specific and clear in your edits. The AI will follow your instructions exactly.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+                </div>
+            )}
+
             {/* Navigation Actions */}
             <div className="flex items-center justify-between pt-8 border-t border-border mt-8">
                 <div>
@@ -329,9 +487,9 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
                 </div>
 
                 <div>
-                    {step < 3 ? (
+                    {step < 4 ? (
                         <Button onClick={handleNext} className="px-8">
-                            Next Step <ArrowRight className="h-4 w-4 ml-2" />
+                            {step === 3 ? 'Generate Preview' : 'Next Step'} <ArrowRight className="h-4 w-4 ml-2" />
                         </Button>
                     ) : (
                         <Button
@@ -346,7 +504,7 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
                             ) : (
                                 <>
                                     <Sparkles className="h-5 w-5 mr-2" />
-                                    Generate Magic Page
+                                    Continue & Generate Page
                                 </>
                             )}
                         </Button>

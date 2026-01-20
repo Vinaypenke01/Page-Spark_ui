@@ -18,9 +18,9 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Structured flow
+      // Use the generated/edited prompt from Step 4
       const requestData: GeneratePageRequest = {
-        prompt: `Generate a ${data.occasion} page`, // Fallback/Placeholder prompt for now
+        prompt: data.prompt || data.generatedPrompt || `Generate a ${data.occasion} page`,
         email: data.email,
         page_type: data.occasion,
         theme: data.theme,

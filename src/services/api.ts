@@ -233,6 +233,13 @@ export const api = {
         },
 
         /**
+         * Generate AI-optimized prompt from user data
+         */
+        generatePrompt: async (userData: Record<string, any>): Promise<{ generated_prompt: string; user_data: Record<string, any> }> => {
+            return client.post<{ generated_prompt: string; user_data: Record<string, any> }>('/api/generate-prompt/', { user_data: userData }, { timeout: 30000, skipAuth: true });
+        },
+
+        /**
          * Get page history for an email
          */
         getHistory: async (email: string): Promise<PageHistoryItem[]> => {
