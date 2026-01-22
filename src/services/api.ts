@@ -236,7 +236,7 @@ export const api = {
          * Generate AI-optimized prompt from user data
          */
         generatePrompt: async (userData: Record<string, any>): Promise<{ generated_prompt: string; user_data: Record<string, any> }> => {
-            return client.post<{ generated_prompt: string; user_data: Record<string, any> }>('/api/generate-prompt/', { user_data: userData }, { timeout: 30000, skipAuth: true });
+            return client.post<{ generated_prompt: string; user_data: Record<string, any> }>('/api/generate-prompt/', { user_data: userData }, { timeout: 90000, skipAuth: true });
         },
 
         /**

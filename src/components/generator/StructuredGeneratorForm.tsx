@@ -177,9 +177,11 @@ const StructuredGeneratorForm = ({ onGenerate, isLoading }: StructuredGeneratorF
                     setFormData((prev) => ({ ...prev, generatedPrompt: response.generated_prompt }));
                 } catch (error) {
                     console.error('Failed to generate AI prompt:', error);
-                    // Fallback to frontend generation if backend fails
-                    const fallbackPrompt = generatePromptPreview();
-                    setFormData((prev) => ({ ...prev, generatedPrompt: fallbackPrompt }));
+                    // Show error - Groq should always work if API key is valid
+                    setFormData((prev) => ({
+                        ...prev,
+                        generatedPrompt: `❌ Error: ${error instanceof Error ? error.message : 'Failed to generate prompt'}.\n\nPlease check:\n1. Your Groq API key is set correctly\n2. You have internet connection\n3. Groq service is available`
+                    }));
                 }
             } else {
                 setStep((prev) => prev + 1);
